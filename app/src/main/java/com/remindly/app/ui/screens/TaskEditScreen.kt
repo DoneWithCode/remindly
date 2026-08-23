@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -40,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.remindly.app.data.Category
 import com.remindly.app.data.RepeatRule
@@ -77,6 +79,7 @@ fun TaskEditScreen(
     var time by remember { mutableStateOf<LocalTime?>(null) }
     var category by remember { mutableStateOf(Category.GENERAL) }
     var repeat by remember { mutableStateOf(RepeatRule.NONE) }
+    var customMinutes by remember { mutableStateOf("30") }
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
@@ -92,6 +95,7 @@ fun TaskEditScreen(
                 time = task.dueTime
                 category = task.category
                 repeat = task.repeat
+                task.repeatIntervalMinutes?.let { customMinutes = it.toString() }
             }
             loaded = true
         }
@@ -192,13 +196,58 @@ fun TaskEditScreen(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                RepeatRule.entries.forEach { option ->
+                listOf(
+                    RepeatRule.NONE,
+                    RepeatRule.HOURLY,
+                    RepeatRule.EVERY_3_HOURS,
+                    RepeatRule.EVERY_8_HOURS,
+                    RepeatRule.CUSTOM
+                ).forEach { option ->
                     FilterChip(
                         selected = repeat == option,
                         onClick = { repeat = option },
-                        label = { Text(if (option == RepeatRule.NONE) "Once" else option.label) }
+                        label = { Text(option.label) }
                     )
                 }
+            }
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    RepeatRule.DAILY,
+                    RepeatRule.WEEKDAYS,
+                    RepeatRule.WEEKLY,
+                    RepeatRule.MONTHLY
+                ).forEach { option ->
+                    FilterChip(
+                        selected = repeat == option,
+                        onClick = { repeat = option },
+                        label = { Text(option.label) }
+                    )
+                }
+            }
+
+            if (repeat == RepeatRule.CUSTOM) {
+                OutlinedTextField(
+                    value = customMinutes,
+                    onValueChange = { input -> customMinutes = input.filter { it.isDigit() }.take(5) },
+                    label = { Text("Repeat every N minutes") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    supportingText = { Text(describeMinutes(customMinutes.toIntOrNull())) },
+                    isError = (customMinutes.toIntOrNull() ?: 0) <= 0,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            if (repeat.isInterval) {
+                Text(
+                    text = "Interval reminders start from the date and time above, then repeat " +
+                        "until you delete the task. Set a time so the first one lands where you expect.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Button(
@@ -210,6 +259,8 @@ fun TaskEditScreen(
                         dueTime = time,
                         category = category,
                         repeat = repeat,
+                        repeatIntervalMinutes =
+                            if (repeat == RepeatRule.CUSTOM) customMinutes.toIntOrNull() else null,
                         // Re-opening a completed task from the editor puts it back in Active.
                         isDone = false,
                         completedAt = null,
@@ -218,7 +269,8 @@ fun TaskEditScreen(
                     viewModel.save(task)
                     onDone()
                 },
-                enabled = title.isNotBlank(),
+                enabled = title.isNotBlank() &&
+                    (repeat != RepeatRule.CUSTOM || (customMinutes.toIntOrNull() ?: 0) > 0),
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
             ) { Text("Save reminder") }
         }
@@ -309,4 +361,19 @@ private fun QuickDateChip(
         onClick = { onSelect(value) },
         label = { Text(label) }
     )
+}
+
+/** Turns a raw minute count into something readable under the custom field. */
+private fun describeMinutes(minutes: Int?): String = when {
+    minutes == null || minutes <= 0 -> "Enter a number greater than zero"
+    minutes < 60 -> "Every $minutes minutes"
+    minutes % 60 == 0 && minutes < 1440 -> {
+        val h = minutes / 60
+        if (h == 1) "Every hour" else "Every $h hours"
+    }
+    minutes % 1440 == 0 -> {
+        val d = minutes / 1440
+        if (d == 1) "Every day" else "Every $d days"
+    }
+    else -> "Every ${minutes / 60}h ${minutes % 60}m"
 }
