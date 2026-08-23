@@ -46,7 +46,7 @@ class TaskRepository(
      */
     suspend fun setDone(task: Task, done: Boolean, auto: Boolean = false) {
         if (done) {
-            val next = task.nextOccurrence()
+            val next = advanceRecurrence(task)
             if (next != null) {
                 dao.update(next)
                 rescheduleAlarm(next)
@@ -65,6 +65,12 @@ class TaskRepository(
     }
 
     suspend fun clearCompletedHistory() = dao.clearCompleted()
+
+    /** Rolls a repeating task to its next occurrence using the user's default time. */
+    suspend fun advanceRecurrence(task: Task): Task? {
+        val s = settingsStore.settings.first()
+        return task.nextOccurrence(s.defaultHour, s.defaultMinute)
+    }
 
     /** Re-arms every open task. Called after a reboot, app update or clock change. */
     suspend fun rescheduleAll() {
