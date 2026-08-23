@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mirrors ui/theme/Color.kt so the window background matches before Compose draws. -->
+    <color name="background">#FFF7F7FA</color>
+    <color name="primary">#FF3F51B5</color>
+    <color name="ic_launcher_background">#FF3F51B5</color>
+</resources>
