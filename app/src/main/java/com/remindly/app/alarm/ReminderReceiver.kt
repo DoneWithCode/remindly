@@ -27,7 +27,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
                 // A repeating task immediately arms its next occurrence so the chain
                 // never breaks, even if the user ignores this notification.
-                task.nextOccurrence()?.let { next ->
+                app.repository.advanceRecurrence(task)?.let { next ->
                     app.repository.upsert(next)
                 }
             } finally {
