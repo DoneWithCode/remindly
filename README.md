@@ -43,6 +43,17 @@ gradle wrapper --gradle-version 8.9   # only needed once
 ./gradlew test                         # JVM unit tests
 ```
 
+**Building without a computer (GitHub Actions)**
+
+`.github/workflows/build-apk.yml` builds a debug APK on every push to `main` and
+attaches it to a rolling `latest` release, so the APK can be downloaded and
+installed straight from a phone browser. It can also be triggered by hand from
+the Actions tab via **Run workflow**.
+
+The workflow generates the Gradle wrapper on the runner (`gradle wrapper`) rather
+than relying on a committed JAR, and runs `testDebugUnitTest` instead of `test`
+— the latter builds both variants to run the same tests twice.
+
 **Permissions the app asks for**
 
 - `POST_NOTIFICATIONS` — requested at first launch on Android 13+. Without it
@@ -73,10 +84,14 @@ gradle wrapper --gradle-version 8.9   # only needed once
 
 **Smart features (the three that earn their keep)**
 
-1. **Recurring reminders** — daily, every weekday, weekly, or monthly. A
-   repeating task never enters the Done list; completing it rolls it forward to
-   its next occurrence and re-schedules the alarm. The next occurrence is also
-   armed the moment the notification fires, so the chain survives being ignored.
+1. **Recurring reminders** — two families. *Interval* rules (every hour, every 3
+   hours, every 8 hours, or a custom gap in minutes) can fire many times a day.
+   *Date* rules (daily, weekdays, weekly, monthly) advance the due date and keep
+   the same time. A repeating task never enters the Done list; completing it
+   rolls it forward and re-schedules the alarm. The next occurrence is also armed
+   the moment the notification fires, so the chain survives being ignored. If the
+   device was off, interval rules skip ahead to the next future slot rather than
+   firing a backlog of missed alarms.
 2. **Auto-complete rule** — an open, non-repeating task whose due moment passed
    more than N hours ago closes itself and is filed under Done, tagged
    "Auto-completed". N is configurable in Settings (6h / 12h / 24h / 72h /
@@ -111,7 +126,8 @@ app/src/main/java/com/remindly/app/
 ├── MainActivity.kt             The only Activity; hosts Compose, handles the
 │                               notification deep link
 ├── data/
-│   ├── Task.kt                 Entity + Category / RepeatRule enums + due-time maths
+│   ├── Task.kt                 Entity + Category / RepeatRule enums, due-time and
+│   │                           recurrence maths
 │   ├── Converters.kt           LocalDate <-> epoch day, LocalTime <-> second of day
 │   ├── TaskDao.kt              Queries, all Flow-based
 │   ├── AppDatabase.kt          Room database (v1)
@@ -153,14 +169,20 @@ Single table, `tasks`:
 | `dueTime` | INTEGER? | second of day; `NULL` means all-day |
 | `category` | TEXT | enum name |
 | `repeat` | TEXT | enum name |
+| `repeatIntervalMinutes` | INTEGER? | gap in minutes when `repeat` is `CUSTOM` |
 | `isDone` | INTEGER | 0/1 |
 | `completedAt` | INTEGER? | epoch millis, orders the Done history |
 | `autoCompleted` | INTEGER | 0/1, set by the sweep |
 | `createdAt` | INTEGER | epoch millis |
 
-Schemas are exported to `app/schemas/`. `AppDatabase` deliberately does **not**
-use `fallbackToDestructiveMigration` — add a proper `Migration` when you bump
-the version so nobody loses their history.
+Currently at **version 2**; v2 added `repeatIntervalMinutes` via `MIGRATION_1_2`
+in `AppDatabase`. Schema export is off (`exportSchema = false`), because the
+debug and release KSP tasks race each other writing the same schema file when
+both variants build in one Gradle invocation. Turn it back on with a
+per-variant `room.schemaLocation` if you start needing schema diffs in review.
+
+`AppDatabase` deliberately does **not** use `fallbackToDestructiveMigration` —
+add a `Migration` whenever you bump the version so nobody loses their history.
 
 ---
 
@@ -206,9 +228,11 @@ If you would rather use Material You, swap the schemes in `RemindlyTheme` for
 ## Known limits
 
 - Snooze is fixed at 10 minutes; there is no snooze-duration picker.
-- Recurrence is limited to daily / weekdays / weekly / monthly — no "every 3rd
-  Tuesday" style rules.
-- Aggressive OEM battery managers (Xiaomi, Oppo, Samsung's stricter modes) can
-  still delay alarms. Exempting the app from battery optimisation is the usual
-  fix; the app does not prompt for it.
+- Recurrence covers fixed intervals and simple date rules — no "every 3rd
+  Tuesday" or "weekdays at 9 and 5" style rules.
+- Interval reminders fire indefinitely; there is no end date or occurrence count.
+- Aggressive OEM battery managers (Xiaomi, Oppo, Vivo, Samsung's stricter modes)
+  can still delay alarms, and short intervals such as hourly are the first thing
+  they throttle. Exempting the app from battery optimisation is the usual fix;
+  the app does not prompt for it.
 - No widget or wear support.
