@@ -173,22 +173,22 @@ private fun QuickAddBar(onAdd: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        placeholder = { Text("Quick add for today…") },
+        placeholder = { Text("Add a reminder…") },
         singleLine = true,
         shape = MaterialTheme.shapes.medium,
         trailingIcon = {
+            // Always tappable: the scheduling dialog has its own title field, so there
+            // is no reason to make the user type here first.
             IconButton(
                 onClick = {
                     onAdd(text)
                     text = ""
-                },
-                enabled = text.isNotBlank()
+                }
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Add task",
-                    tint = if (text.isNotBlank()) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+                    contentDescription = "New reminder",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         },
@@ -197,8 +197,10 @@ private fun QuickAddBar(onAdd: (String) -> Unit) {
         ),
         keyboardActions = androidx.compose.foundation.text.KeyboardActions(
             onDone = {
-                onAdd(text)
-                text = ""
+                if (text.isNotBlank()) {
+                    onAdd(text)
+                    text = ""
+                }
             }
         )
     )
