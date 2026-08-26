@@ -1,11 +1,13 @@
 package com.remindly.app.ui.components
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DatePicker
@@ -20,11 +22,14 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import com.remindly.app.data.RepeatRule
 import java.time.Instant
@@ -58,7 +63,7 @@ data class ScheduleResult(
  * Asks when a task should remind before it is saved, so nothing silently
  * inherits a default time the user never chose.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ScheduleDialog(
     initialTitle: String,
@@ -76,6 +81,12 @@ fun ScheduleDialog(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
+    // Opened from an empty quick-add box? Put the cursor in the title straight away.
+    val titleFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        if (initialTitle.isBlank()) runCatching { titleFocus.requestFocus() }
+    }
+
     val today = LocalDate.now()
     val intervalValid = repeat != RepeatRule.CUSTOM || (customMinutes.toIntOrNull() ?: 0) > 0
 
@@ -84,7 +95,9 @@ fun ScheduleDialog(
         title = { Text("When should this remind you?") },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedTextField(
@@ -92,10 +105,15 @@ fun ScheduleDialog(
                     onValueChange = { title = it },
                     label = { Text("Title") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(titleFocus)
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     FilterChip(
                         selected = date == today,
                         onClick = { date = today },
@@ -108,7 +126,7 @@ fun ScheduleDialog(
                     )
                     AssistChip(
                         onClick = { showDatePicker = true },
-                        label = { Text(date.format(dateFormatter)) }
+                        label = { Text(date.format(dateFormatter), maxLines = 1) }
                     )
                 }
 
@@ -127,9 +145,9 @@ fun ScheduleDialog(
                     )
                 }
 
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     listOf(
                         RepeatRule.NONE,
@@ -142,7 +160,7 @@ fun ScheduleDialog(
                         FilterChip(
                             selected = repeat == option,
                             onClick = { repeat = option },
-                            label = { Text(option.label) }
+                            label = { Text(option.label, maxLines = 1) }
                         )
                     }
                 }
