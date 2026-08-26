@@ -27,9 +27,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import com.remindly.app.data.RepeatRule
 import java.time.Instant
@@ -63,7 +65,11 @@ data class ScheduleResult(
  * Asks when a task should remind before it is saved, so nothing silently
  * inherits a default time the user never chose.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalLayoutApi::class,
+    ExperimentalComposeUiApi::class
+)
 @Composable
 fun ScheduleDialog(
     initialTitle: String,
@@ -83,8 +89,14 @@ fun ScheduleDialog(
 
     // Opened from an empty quick-add box? Put the cursor in the title straight away.
     val titleFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) {
-        if (initialTitle.isBlank()) runCatching { titleFocus.requestFocus() }
+        if (initialTitle.isBlank()) {
+            runCatching {
+                titleFocus.requestFocus()
+                keyboard?.show()
+            }
+        }
     }
 
     val today = LocalDate.now()

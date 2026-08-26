@@ -112,6 +112,12 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
 
     fun canScheduleExactAlarms(): Boolean = scheduler.canScheduleExact()
 
+    /**
+     * Re-arms every alarm. Called when the user comes back from the system
+     * "Alarms & reminders" screen, so alarms queued inexactly get upgraded.
+     */
+    fun rescheduleAll() = viewModelScope.launch { repo.rescheduleAll() }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

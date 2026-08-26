@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.remindly.app.data.Task
 import com.remindly.app.ui.TaskViewModel
+import com.remindly.app.ui.components.ExactAlarmBanner
 import com.remindly.app.ui.components.EmptyState
 import com.remindly.app.ui.components.ScheduleDialog
 import com.remindly.app.ui.components.SectionHeader
@@ -92,6 +93,8 @@ fun TodayScreen(
                 )
             }
         }
+
+        item { ExactAlarmBanner(viewModel) }
 
         item {
             QuickAddBar(onAdd = { typed ->

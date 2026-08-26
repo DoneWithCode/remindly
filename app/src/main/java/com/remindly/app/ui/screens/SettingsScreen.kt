@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -28,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +38,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.remindly.app.data.ThemeMode
 import com.remindly.app.ui.TaskViewModel
@@ -52,6 +57,25 @@ fun SettingsScreen(viewModel: TaskViewModel, contentPadding: PaddingValues) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showTimePicker by remember { mutableStateOf(false) }
+
+    // The user can flip this in system settings at any time, so re-read it on every
+    // resume instead of trusting the value captured when the screen was first drawn.
+    var exactAllowed by remember { mutableStateOf(viewModel.canScheduleExactAlarms()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val now = viewModel.canScheduleExactAlarms()
+                if (now && !exactAllowed) {
+                    // Just granted — upgrade the alarms that were queued inexactly.
+                    viewModel.rescheduleAll()
+                }
+                exactAllowed = now
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Column(
         modifier = Modifier
@@ -108,16 +132,17 @@ fun SettingsScreen(viewModel: TaskViewModel, contentPadding: PaddingValues) {
         }
 
         SettingsSection("Permissions") {
-            val exactAllowed = viewModel.canScheduleExactAlarms()
             SettingsRow(
-                title = if (exactAllowed) "Exact alarms allowed" else "Allow exact alarms",
+                title = if (exactAllowed) "Exact alarms allowed" else "Exact alarms are OFF",
                 subtitle = if (exactAllowed)
                     "Reminders fire at the exact minute you chose."
                 else
-                    "Without this, reminders may arrive up to 10 minutes late. Tap to open system settings.",
+                    "Reminders may arrive late or be batched by the system. " +
+                        "Tap here, then turn on \"Allow setting alarms and reminders\".",
                 icon = true,
+                warning = !exactAllowed,
                 onClick = {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !exactAllowed) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         context.startActivity(
                             Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
                         )
@@ -191,6 +216,7 @@ private fun SettingsRow(
     title: String,
     subtitle: String,
     icon: Boolean = false,
+    warning: Boolean = false,
     onClick: () -> Unit
 ) {
     Row(
@@ -201,7 +227,12 @@ private fun SettingsRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (warning) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurface
+            )
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodySmall,
@@ -210,9 +241,10 @@ private fun SettingsRow(
         }
         if (icon) {
             Icon(
-                Icons.Default.Alarm,
+                imageVector = if (warning) Icons.Default.WarningAmber else Icons.Default.Alarm,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = if (warning) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
