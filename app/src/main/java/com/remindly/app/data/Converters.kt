@@ -17,7 +17,7 @@ class Converters {
     fun timeToSecondOfDay(time: LocalTime?): Int? = time?.toSecondOfDay()
 
     @TypeConverter
-      fun secondOfDayToTime(value: Int?): LocalTime? =
+    fun secondOfDayToTime(value: Int?): LocalTime? =
         value?.let { LocalTime.ofSecondOfDay(it.toLong()) } // ofSecondOfDay takes a Long
 
     @TypeConverter

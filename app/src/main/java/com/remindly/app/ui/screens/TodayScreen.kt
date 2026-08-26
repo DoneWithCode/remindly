@@ -1,19 +1,15 @@
 package com.remindly.app.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -24,7 +20,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -32,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.remindly.app.data.Task
 import com.remindly.app.ui.TaskViewModel
 import com.remindly.app.ui.components.EmptyState
+import com.remindly.app.ui.components.ScheduleDialog
 import com.remindly.app.ui.components.SectionHeader
 import com.remindly.app.ui.components.TaskRow
 import java.time.LocalDate
@@ -52,6 +48,25 @@ fun TodayScreen(
     val today by viewModel.todayTasks.collectAsStateWithLifecycle()
     val upcoming by viewModel.upcomingTasks.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+
+    var pendingTitle by remember { mutableStateOf<String?>(null) }
+
+    pendingTitle?.let { typed ->
+        ScheduleDialog(
+            initialTitle = typed,
+            onDismiss = { pendingTitle = null },
+            onConfirm = { result ->
+                viewModel.addScheduled(
+                    title = result.title,
+                    date = result.date,
+                    time = result.time,
+                    repeat = result.repeat,
+                    intervalMinutes = result.intervalMinutes
+                )
+                pendingTitle = null
+            }
+        )
+    }
 
     val date = LocalDate.now()
     val overdue = today.filter { it.dueDate < date }
@@ -78,7 +93,11 @@ fun TodayScreen(
             }
         }
 
-        item { QuickAddBar(onAdd = { viewModel.quickAdd(it) }) }
+        item {
+            QuickAddBar(onAdd = { typed ->
+                pendingTitle = typed
+            })
+        }
 
         if (overdue.isNotEmpty()) {
             item { SectionHeader("Overdue") }
@@ -148,34 +167,16 @@ private fun summaryLine(overdue: List<Task>, dueToday: List<Task>): String = whe
 private fun QuickAddBar(onAdd: (String) -> Unit) {
     var text by remember { mutableStateOf("") }
 
-    Card(
+    OutlinedTextField(
+        value = text,
+        onValueChange = { text = it },
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Quick add for today…") },
-                singleLine = true,
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                    onDone = {
-                        onAdd(text)
-                        text = ""
-                    }
-                )
-            )
+        placeholder = { Text("Quick add for today…") },
+        singleLine = true,
+        shape = MaterialTheme.shapes.medium,
+        trailingIcon = {
             IconButton(
                 onClick = {
                     onAdd(text)
@@ -183,8 +184,22 @@ private fun QuickAddBar(onAdd: (String) -> Unit) {
                 },
                 enabled = text.isNotBlank()
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add task")
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add task",
+                    tint = if (text.isNotBlank()) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-        }
-    }
+        },
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+            imeAction = ImeAction.Done
+        ),
+        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+            onDone = {
+                onAdd(text)
+                text = ""
+            }
+        )
+    )
 }

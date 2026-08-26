@@ -129,7 +129,12 @@ data class Task(
             )
         }
 
-        val nextDate = repeat.next(dueDate) ?: return null
+        val time = dueTime ?: LocalTime.of(defaultHour, defaultMinute)
+        var nextDate = repeat.next(dueDate) ?: return null
+        // Missed a few days? Skip to the next slot that is actually in the future.
+        while (LocalDateTime.of(nextDate, time).isBefore(now)) {
+            nextDate = repeat.next(nextDate) ?: return null
+        }
         return copy(dueDate = nextDate, isDone = false, completedAt = null, autoCompleted = false)
     }
 }

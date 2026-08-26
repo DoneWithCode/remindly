@@ -47,6 +47,7 @@ import com.remindly.app.data.Category
 import com.remindly.app.data.RepeatRule
 import com.remindly.app.data.Task
 import com.remindly.app.ui.TaskViewModel
+import com.remindly.app.ui.components.nextSlot
 import com.remindly.app.ui.theme.color
 import java.time.Instant
 import java.time.LocalDate
@@ -75,8 +76,9 @@ fun TaskEditScreen(
 
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(LocalDate.now()) }
-    var time by remember { mutableStateOf<LocalTime?>(null) }
+    val startSlot = remember { nextSlot() }
+    var date by remember { mutableStateOf(startSlot.toLocalDate()) }
+    var time by remember { mutableStateOf<LocalTime?>(startSlot.toLocalTime()) }
     var category by remember { mutableStateOf(Category.GENERAL) }
     var repeat by remember { mutableStateOf(RepeatRule.NONE) }
     var customMinutes by remember { mutableStateOf("30") }

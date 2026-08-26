@@ -72,12 +72,12 @@ class TaskRepository(
         return task.nextOccurrence(s.defaultHour, s.defaultMinute)
     }
 
-    /** Re-arms every open task. Called after a reboot, app update or clock change. */
+    /**
+     * Re-arms every open task, rolling any missed recurrences forward first.
+     * Called on app start, after a reboot, an app update or a clock change.
+     */
     suspend fun rescheduleAll() {
-        val s = settingsStore.settings.first()
-        dao.getActiveOnce().forEach { task ->
-            scheduler.schedule(task, s.defaultHour, s.defaultMinute)
-        }
+        dao.getActiveOnce().forEach { task -> rescheduleAlarm(task) }
     }
 
     /**
@@ -104,6 +104,21 @@ class TaskRepository(
     private suspend fun rescheduleAlarm(task: Task) {
         val s = settingsStore.settings.first()
         scheduler.cancel(task.id)
-        if (!task.isDone) scheduler.schedule(task, s.defaultHour, s.defaultMinute)
+        if (task.isDone) return
+
+        // AlarmManager cannot fire in the past. A repeating task whose moment has
+        // already gone by — created a minute late, or missed while the phone was off —
+        // would otherwise sit overdue forever with no alarm attached. Roll it forward.
+        val stale = task.triggerAt(s.defaultHour, s.defaultMinute) <= System.currentTimeMillis()
+        if (stale && task.repeat != RepeatRule.NONE) {
+            val next = task.nextOccurrence(s.defaultHour, s.defaultMinute)
+            if (next != null) {
+                dao.update(next)
+                scheduler.schedule(next, s.defaultHour, s.defaultMinute)
+                return
+            }
+        }
+
+        scheduler.schedule(task, s.defaultHour, s.defaultMinute)
     }
 }

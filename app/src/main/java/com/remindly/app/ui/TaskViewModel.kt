@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import com.remindly.app.RemindlyApp
 import com.remindly.app.data.AppSettings
 import com.remindly.app.data.Category
+import com.remindly.app.data.RepeatRule
 import com.remindly.app.data.Task
 import com.remindly.app.data.ThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,12 +64,28 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         onSaved(repo.upsert(task))
     }
 
-    /** Quick-add: title only, due today, notifies at the default reminder time. */
-    fun quickAdd(title: String, date: LocalDate = LocalDate.now(), category: Category = Category.GENERAL) {
+    /** Adds a task from the schedule dialog, where the user picked the time explicitly. */
+    fun addScheduled(
+        title: String,
+        date: LocalDate,
+        time: LocalTime,
+        repeat: RepeatRule,
+        intervalMinutes: Int?,
+        category: Category = Category.GENERAL
+    ) {
         val clean = title.trim()
         if (clean.isEmpty()) return
         viewModelScope.launch {
-            repo.upsert(Task(title = clean, dueDate = date, dueTime = null, category = category))
+            repo.upsert(
+                Task(
+                    title = clean,
+                    dueDate = date,
+                    dueTime = time,
+                    category = category,
+                    repeat = repeat,
+                    repeatIntervalMinutes = intervalMinutes
+                )
+            )
         }
     }
 

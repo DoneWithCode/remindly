@@ -98,9 +98,10 @@ than relying on a committed JAR, and runs `testDebugUnitTest` instead of `test`
    Never; default 24h). A `WorkManager` job runs this sweep hourly and again on
    every app start, so the Active list never fills up with stale items.
 3. **Quick-add + categories** — the Today screen has a one-line box: type a
-   title, press enter, and the task lands on today at the default time. Tasks
-   carry a category (General / Work / Personal / Health / Shopping) shown as a
-   colour dot, and the Active tab filters by it with a chip row.
+   title, press enter, and a scheduling dialog asks for the date, time and repeat
+   before anything is saved, so no reminder silently inherits a default time.
+   Tasks carry a category (General / Work / Personal / Health / Shopping) shown
+   as a colour dot, and the Active tab filters by it with a chip row.
 
 **Navigation**
 
