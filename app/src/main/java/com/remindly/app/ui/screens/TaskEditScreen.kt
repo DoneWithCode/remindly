@@ -1,9 +1,9 @@
 package com.remindly.app.ui.screens
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -63,7 +63,7 @@ private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime
 /**
  * One screen for both creating and editing. [taskId] of 0 means "new task".
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TaskEditScreen(
     viewModel: TaskViewModel,
@@ -152,7 +152,10 @@ fun TaskEditScreen(
             )
 
             FieldLabel("When")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 AssistChip(
                     onClick = { showDatePicker = true },
                     label = { Text(date.format(dateFormatter)) }
@@ -167,9 +170,9 @@ fun TaskEditScreen(
             }
 
             // One-tap shortcuts covering the majority of real scheduling.
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 QuickDateChip("Today", LocalDate.now(), date) { date = it }
                 QuickDateChip("Tomorrow", LocalDate.now().plusDays(1), date) { date = it }
@@ -177,15 +180,15 @@ fun TaskEditScreen(
             }
 
             FieldLabel("Category")
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Category.entries.forEach { option ->
                     FilterChip(
                         selected = category == option,
                         onClick = { category = option },
-                        label = { Text(option.label) },
+                        label = { Text(option.label, maxLines = 1) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = option.color().copy(alpha = 0.20f)
                         )
@@ -194,38 +197,15 @@ fun TaskEditScreen(
             }
 
             FieldLabel("Repeat")
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                listOf(
-                    RepeatRule.NONE,
-                    RepeatRule.HOURLY,
-                    RepeatRule.EVERY_3_HOURS,
-                    RepeatRule.EVERY_8_HOURS,
-                    RepeatRule.CUSTOM
-                ).forEach { option ->
+                RepeatRule.entries.forEach { option ->
                     FilterChip(
                         selected = repeat == option,
                         onClick = { repeat = option },
-                        label = { Text(option.label) }
-                    )
-                }
-            }
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf(
-                    RepeatRule.DAILY,
-                    RepeatRule.WEEKDAYS,
-                    RepeatRule.WEEKLY,
-                    RepeatRule.MONTHLY
-                ).forEach { option ->
-                    FilterChip(
-                        selected = repeat == option,
-                        onClick = { repeat = option },
-                        label = { Text(option.label) }
+                        label = { Text(option.label, maxLines = 1) }
                     )
                 }
             }
